@@ -1,0 +1,17 @@
+{
+  "name": "redirect-service",
+  "version": "1.0.0",
+  "description": "Service for redirecting shortened URLs with Redis caching",
+  "main": "redirect.js",
+  "type": "module",
+  "scripts": {
+    "start": "node redirect.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "drizzle-orm": "^0.30.10",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "redis": "^4.6.13"
+  }
+}

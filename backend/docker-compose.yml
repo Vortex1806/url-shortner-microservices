@@ -1,0 +1,66 @@
+services:
+  api_gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - SHORTENER_SERVICE_URL=http://shortener_service:3001
+      - REDIRECT_SERVICE_URL=http://redirect_service:3002
+    depends_on:
+      - shortener_service
+      - redirect_service
+    networks:
+      - url_shortener_net
+
+  shortener_service:
+    build: ./shortener-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgres://postgres:admin@db:5432/postgres
+    depends_on:
+      - db
+    networks:
+      - url_shortener_net
+
+  redirect_service:
+    build: ./redirect-service
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgres://postgres:admin@db:5432/postgres
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - url_shortener_net
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - url_shortener_net
+
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - url_shortener_net
+
+volumes:
+  db_data:
+
+networks:
+  url_shortener_net:
+    driver: bridge

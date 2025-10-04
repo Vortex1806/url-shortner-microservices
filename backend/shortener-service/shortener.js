@@ -22,6 +22,7 @@ app.use(express.json());
 const authRouter = express.Router();
 
 authRouter.post("/signup", async (req, res) => {
+
   const validationResult = await signupRequestBodySchema.safeParseAsync(
     req.body
   );

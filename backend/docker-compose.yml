@@ -2,10 +2,11 @@ services:
   api_gateway:
     build: ./api-gateway
     ports:
-      - "3000:3000"
+      - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
     environment:
-      - SHORTENER_SERVICE_URL=http://shortener_service:3001
-      - REDIRECT_SERVICE_URL=http://redirect_service:3002
+      - PORT=${API_GATEWAY_PORT}
+      - SHORTENER_SERVICE_URL=http://shortener_service:${SHORTENER_SERVICE_PORT}
+      - REDIRECT_SERVICE_URL=http://redirect_service:${REDIRECT_SERVICE_PORT}
     depends_on:
       - shortener_service
       - redirect_service
@@ -15,9 +16,11 @@ services:
   shortener_service:
     build: ./shortener-service
     ports:
-      - "3001:3001"
+      - "${SHORTENER_SERVICE_PORT}:${SHORTENER_SERVICE_PORT}"
     environment:
-      - DATABASE_URL=postgres://postgres:admin@db:5432/postgres
+      - PORT=${SHORTENER_SERVICE_PORT}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - db
     networks:
@@ -26,10 +29,11 @@ services:
   redirect_service:
     build: ./redirect-service
     ports:
-      - "3002:3002"
+      - "${REDIRECT_SERVICE_PORT}:${REDIRECT_SERVICE_PORT}"
     environment:
-      - DATABASE_URL=postgres://postgres:admin@db:5432/postgres
-      - REDIS_URL=redis://redis:6379
+      - PORT=${REDIRECT_SERVICE_PORT}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:${REDIS_PORT}
     depends_on:
       - db
       - redis
@@ -40,11 +44,11 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_PASSWORD: admin
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
@@ -54,7 +58,7 @@ services:
     image: redis
     restart: always
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     networks:
       - url_shortener_net
 

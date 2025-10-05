@@ -1,94 +1,200 @@
-URL Shortener Microservices
-This project is a URL shortener application built with a microservices architecture. It consists of:
+# **Lyncut \- A High-Performance URL Shortener Microservice 🚀**
 
-API Gateway: The single entry point for all client requests. It routes traffic to the appropriate downstream service.
+Lyncut is a robust and scalable URL shortening service built with a microservices architecture. It provides a simple way to create, manage, and track short links, designed for high availability and performance.
 
-Shortener Service: Handles user authentication (signup/login) and the creation/management of shortened URLs.
+## **System Architecture**
 
-Redirect Service: Handles the redirection from a short code to the original target URL. It uses a Redis cache to improve performance and reduce database load.
+Lyncut is decomposed into four main services, an API Gateway, and two data stores, ensuring separation of concerns, scalability, and resilience.
 
-Architecture Overview
+### **Architecture Diagram**
 
-Licensed by Google
-A user sends a request to the API Gateway.
+<img width="3840" height="1575" alt="Untitled diagram _ Mermaid Chart-2025-10-05-124751" src="https://github.com/user-attachments/assets/0a5db8f1-8d22-416d-b35e-86810f6e28dc" />
 
-The API Gateway, based on the URL path, proxies the request to either the shortener-service (for /api/... routes) or the redirect-service (for /:shortCode routes).
+### **Microservices**
 
-The Shortener Service interacts with the PostgreSQL database to manage user and URL data.
+* **API Gateway**: The single entry point for all client requests. It routes traffic to the appropriate downstream service (Shortener or Redirect) based on the request path.  
+* **Shortener Service**: Handles all business logic related to users and URLs. This includes user authentication (signup, login), and CRUD operations for URLs (create, view, delete).  
+* **Redirect Service**: Its sole purpose is to handle incoming short links and redirect users to the target URL with maximum speed. It heavily utilizes Redis for caching to minimize database lookups.  
+* **Analytics Service**: An asynchronous service responsible for processing URL visit counts. It listens to events from the Redirect Service via Redis Streams and periodically flushes aggregated data to the PostgreSQL database. This decouples analytics from the critical redirect path, ensuring redirects remain fast.
 
-The Redirect Service first checks its Redis cache for the target URL. If it's a cache miss, it queries the PostgreSQL database, populates the cache, and then performs the redirect.
+## **Tech Stack 💻**
 
-How to Run
-Prerequisites
-Docker and Docker Compose
+* **Backend**: Node.js, Express.js  
+* **Database**: PostgreSQL  
+* **ORM**: Drizzle ORM  
+* **Caching & Messaging**: Redis (used for caching redirects and as a message broker with Redis Streams)  
+* **Containerization**: Docker, Docker Compose  
+* **Validation**: Zod  
+* **Authentication**: JSON Web Tokens (JWT)
 
-Steps
-Clone the repository and structure your files:
-Make sure your directory structure looks like this:
+## **Database Schema**
 
-.
-├── docker-compose.yml
-├── api-gateway/
-│   ├── Dockerfile
-│   ├── gateway.js
-│   └── package.json
-├── shortener-service/
-│   ├── Dockerfile
-│   ├── shortener.js
-│   └── package.json
-├── redirect-service/
-│   ├── Dockerfile
-│   ├── redirect.js
-│   └── package.json
-└── README.md
+The database consists of two primary tables: users and urls.
 
-Run the application:
-Open a terminal in the root directory of the project and run:
+### **users Table**
 
-docker-compose up --build
+Stores user information, including credentials for authentication.
 
-This will build the Docker images for each service and start all the containers.
+// Drizzle ORM Schema: users  
+export const userTable \= pgTable("users", {  
+  id: uuid("id").primaryKey().defaultRandom(),  
+  firstName: varchar("first\_name", { length: 55 }).notNull(),  
+  lastName: varchar("last\_name", { length: 55 }),  
+  email: varchar("email", { length: 255 }).notNull().unique(),  
+  password: text("password").notNull(),  
+  salt: text("salt").notNull(),  
+  createdAt: timestamp("created\_at").defaultNow().notNull(),  
+  updatedAt: timestamp("updated\_at").$onUpdate(() \=\> new Date()),  
+});
 
-Run database migrations (First time setup):
-After the services are running, you'll need to create the database tables. Open a new terminal and run:
+### **urls Table**
 
-docker-compose exec shortener_service npm run db:generate
-docker-compose exec shortener_service npm run db:migrate
+Stores the short codes, their target URLs, and associated metadata.
 
-This executes the Drizzle Kit commands inside the shortener_service container to set up the database schema.
+// Drizzle ORM Schema: urls  
+export const urlsTable \= pgTable("urls", {  
+  id: uuid("id").primaryKey().defaultRandom(),  
+  shortCode: varchar("short\_code", { length: 155 }).notNull().unique(),  
+  targetUrl: text("target\_url").notNull(),  
+  userId: uuid("user\_id").references(() \=\> userTable.id).notNull(),  
+  visitCount: integer("visit\_count").notNull().default(0),  
+  createdAt: timestamp("created\_at").notNull().defaultNow(),  
+  updatedAt: timestamp("updated\_at").$onUpdate(() \=\> new Date()),  
+});
 
-Access the services:
+## **🛣️ API Endpoints**
 
-API Gateway: http://localhost:3000
+All API routes are accessed through the API Gateway.
 
-Shorten a URL (POST): http://localhost:3000/api/urls/shorten
+### **🔐 Authentication (/api/users)**
 
-Redirect (GET): http://localhost:3000/{your-short-code}
+#### **📝 Sign Up**
 
-Using the API
-Sign up (POST http://localhost:3000/api/users/signup)
+**Endpoint**: POST /api/users/signup
 
-{
-    "firstName": "John",
-    "email": "john.doe@example.com",
-    "password": "password123"
+Registers a new user.  
+Request:  
+{  
+  "firstName": "John",  
+  "lastName": "Doe",  
+  "email": "john.doe@example.com",  
+  "password": "strongpassword123"  
 }
 
-Login (POST http://localhost:3000/api/users/login)
+**Response (201 Created)**:
 
-{
-    "email": "john.doe@example.com",
-    "password": "password123"
+{  
+  "data": { "userId": "a1b2c3d4-e5f6-..." }  
 }
 
-This will return a JWT token.
+#### **🔑 Log In**
 
-Shorten a URL (POST http://localhost:3000/api/urls/shorten)
-Include the JWT token in the Authorization header: Bearer <your_token>
+**Endpoint**: POST /api/users/login
 
-{
-    "url": "[https://www.google.com](https://www.google.com)"
+Authenticates a user and returns a JWT.  
+Request:  
+{  
+  "email": "john.doe@example.com",  
+  "password": "strongpassword123"  
 }
 
-Visit the short URL (GET http://localhost:3000/<short_code>)
-This will redirect you to https://www.google.com. The first time will be a database hit, and subsequent requests will be served from the Redis cache.
+**Response (200 OK)**:
+
+{  
+  "success": "User logged in successfully",  
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  
+}
+
+### **🔗 URL Management (/api/urls)**
+
+Requires a valid JWT in the Authorization: Bearer \<token\> header.
+
+#### **✨ Create a Short URL**
+
+Endpoint: POST /api/urls/shorten  
+Request:  
+{  
+  "url": "\[https://github.com/google/gemini-api\](https://github.com/google/gemini-api)",  
+  "code": "gemini-api"  
+}
+
+**Response (201 Created)**:
+
+{  
+  "id": "f1e2d3c4-...",  
+  "shortCode": "gemini-api",  
+  "targetUrl": "\[https://github.com/google/gemini-api\](https://github.com/google/gemini-api)"  
+}
+
+#### **📜 Get User's Short URLs**
+
+Endpoint: GET /api/urls/codes  
+Response (200 OK):  
+{  
+  "codes": \[  
+    {  
+      "id": "f1e2d3c4-...",  
+      "shortCode": "gemini-api",  
+      "targetUrl": "\[https://github.com/google/gemini-api\](https://github.com/google/gemini-api)",  
+      "userId": "a1b2c3d4-...",  
+      "visitCount": 15,  
+      "createdAt": "2025-10-05T12:00:00.000Z",  
+      "updatedAt": null  
+    }  
+  \]  
+}
+
+#### **🗑️ Delete a Short URL**
+
+Endpoint: DELETE /api/urls/:id  
+Response (200 OK):  
+{ "deleted": true }
+
+### **🚦 Redirection**
+
+**Endpoint**: GET /:shortCode
+
+Redirects the user to the target URL.  
+Response: 301 Moved Permanently  
+Error (404):  
+{ "error": "Short URL does not exist" }
+
+## **📊 Asynchronous Analytics Pipeline**
+
+To ensure high redirect performance, Lyncut employs an asynchronous analytics system using Redis Streams.
+
+* **🔁 Publish**: Redirect Service publishes url\_visits events with the shortCode.  
+* **🧮 Ingest & Batch**: Analytics Service listens to the stream and aggregates counts in Redis Hashes.  
+* **💾 Flush**: A background loop periodically bulk-updates PostgreSQL with aggregated counts, then clears Redis.
+
+This ensures fault tolerance and high throughput even under heavy load.
+
+## **⚙️ Local Setup & Installation**
+
+### **🧱 Prerequisites**
+
+* Docker & Docker Compose  
+* Git
+
+### **🧰 Steps**
+
+1. git clone \<your-repository-url\>  
+   cd lyncut-project
+
+2. cp .env.example .env  
+   \# Edit .env and set POSTGRES\_PASSWORD, JWT\_SECRET
+
+3. docker-compose up \-d \--build
+
+4. docker-compose ps
+
+Access the API Gateway at:  
+👉 http://localhost:3000
+
+## **🚀 Future Roadmap**
+
+* **🖥️ Frontend Application**: React/Vue/Svelte web client  
+* **📈 Advanced Analytics**: Referrers, geo data, time-series  
+* **🌐 Custom Domains**: Branded short links  
+* **⚡ Rate Limiting**: Prevent API abuse  
+* **☸️ Kubernetes Deployment**: Helm charts for production

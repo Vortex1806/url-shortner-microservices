@@ -34,7 +34,7 @@ The database consists of two primary tables: users and urls.
 ### **users Table**
 
 Stores user information, including credentials for authentication.
-
+```
 // Drizzle ORM Schema: users  
 export const userTable \= pgTable("users", {  
   id: uuid("id").primaryKey().defaultRandom(),  
@@ -46,11 +46,11 @@ export const userTable \= pgTable("users", {
   createdAt: timestamp("created\_at").defaultNow().notNull(),  
   updatedAt: timestamp("updated\_at").$onUpdate(() \=\> new Date()),  
 });
-
+```
 ### **urls Table**
 
 Stores the short codes, their target URLs, and associated metadata.
-
+```
 // Drizzle ORM Schema: urls  
 export const urlsTable \= pgTable("urls", {  
   id: uuid("id").primaryKey().defaultRandom(),  
@@ -61,7 +61,7 @@ export const urlsTable \= pgTable("urls", {
   createdAt: timestamp("created\_at").notNull().defaultNow(),  
   updatedAt: timestamp("updated\_at").$onUpdate(() \=\> new Date()),  
 });
-
+```
 ## **🛣️ API Endpoints**
 
 All API routes are accessed through the API Gateway.
@@ -74,37 +74,39 @@ All API routes are accessed through the API Gateway.
 
 Registers a new user.  
 Request:  
+```
 {  
   "firstName": "John",  
   "lastName": "Doe",  
   "email": "john.doe@example.com",  
   "password": "strongpassword123"  
 }
-
+```
 **Response (201 Created)**:
-
+```
 {  
   "data": { "userId": "a1b2c3d4-e5f6-..." }  
 }
-
+```
 #### **🔑 Log In**
 
 **Endpoint**: POST /api/users/login
 
 Authenticates a user and returns a JWT.  
 Request:  
+```
 {  
   "email": "john.doe@example.com",  
   "password": "strongpassword123"  
 }
-
+```
 **Response (200 OK)**:
-
+```
 {  
   "success": "User logged in successfully",  
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  
 }
-
+```
 ### **🔗 URL Management (/api/urls)**
 
 Requires a valid JWT in the Authorization: Bearer \<token\> header.
@@ -113,23 +115,25 @@ Requires a valid JWT in the Authorization: Bearer \<token\> header.
 
 Endpoint: POST /api/urls/shorten  
 Request:  
+```
 {  
   "url": "\[https://github.com/google/gemini-api\](https://github.com/google/gemini-api)",  
   "code": "gemini-api"  
 }
-
+```
 **Response (201 Created)**:
-
+```
 {  
   "id": "f1e2d3c4-...",  
   "shortCode": "gemini-api",  
   "targetUrl": "\[https://github.com/google/gemini-api\](https://github.com/google/gemini-api)"  
 }
-
+```
 #### **📜 Get User's Short URLs**
 
 Endpoint: GET /api/urls/codes  
 Response (200 OK):  
+```
 {  
   "codes": \[  
     {  
@@ -143,12 +147,14 @@ Response (200 OK):
     }  
   \]  
 }
-
+```
 #### **🗑️ Delete a Short URL**
 
 Endpoint: DELETE /api/urls/:id  
 Response (200 OK):  
+```
 { "deleted": true }
+```
 
 ### **🚦 Redirection**
 
@@ -157,8 +163,9 @@ Response (200 OK):
 Redirects the user to the target URL.  
 Response: 301 Moved Permanently  
 Error (404):  
+```
 { "error": "Short URL does not exist" }
-
+```
 ## **📊 Asynchronous Analytics Pipeline**
 
 To ensure high redirect performance, Lyncut employs an asynchronous analytics system using Redis Streams.
@@ -177,7 +184,7 @@ This ensures fault tolerance and high throughput even under heavy load.
 * Git
 
 ### **🧰 Steps**
-
+```
 1. git clone \<your-repository-url\>  
    cd lyncut-project
 
@@ -187,7 +194,7 @@ This ensures fault tolerance and high throughput even under heavy load.
 3. docker-compose up \-d \--build
 
 4. docker-compose ps
-
+```
 Access the API Gateway at:  
 👉 http://localhost:3000
 

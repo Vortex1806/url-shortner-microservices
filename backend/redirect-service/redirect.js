@@ -8,23 +8,38 @@ const redisClient = createClient({
   url: process.env.REDIS_URL,
 });
 
+const STREAM_NAME = "url_visits";
+
 redisClient.on("error", (err) => console.log("Redis Client Error", err));
 await redisClient.connect();
 
 const app = express();
 
+async function publishVisitEvent(shortCode) {
+  try {
+    const eventData = { shortCode };
+    await redisClient.xAdd(STREAM_NAME, "*", eventData);
+    console.log(`[Event Published] shortCode: ${shortCode}`);
+  } catch (error) {
+    console.error(
+      `CRITICAL: Failed to publish visit event for ${shortCode}`,
+      error
+    );
+    // In a production system, you would add an alert here.
+  }
+}
+
 app.get("/:shortCode", async (req, res) => {
   const code = req.params.shortCode;
 
   try {
-    // 1. Check Redis Cache
     const cachedUrl = await redisClient.get(code);
     if (cachedUrl) {
       console.log(`Cache hit for: ${code}`);
+      publishVisitEvent(code);
       return res.redirect(301, cachedUrl);
     }
 
-    // 2. If not in cache, query the database
     console.log(`Cache miss for: ${code}. Querying DB.`);
     const [result] = await db
       .select({ targetUrl: urlsTable.targetUrl })
@@ -35,9 +50,8 @@ app.get("/:shortCode", async (req, res) => {
       return res.status(404).json({ error: "Short URL does not exist" });
     }
 
-    // 3. Store in Redis for future requests (e.g., cache for 1 hour)
     await redisClient.setEx(code, 3600, result.targetUrl);
-
+    publishVisitEvent(code);
     return res.redirect(301, result.targetUrl);
   } catch (error) {
     console.error("Error during redirection:", error);

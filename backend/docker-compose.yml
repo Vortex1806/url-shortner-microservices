@@ -1,47 +1,77 @@
+version: "3.8"
+
 services:
   api_gateway:
     build: ./api-gateway
+    container_name: api_gateway
     ports:
       - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
     environment:
       - PORT=${API_GATEWAY_PORT}
       - SHORTENER_SERVICE_URL=http://shortener_service:${SHORTENER_SERVICE_PORT}
       - REDIRECT_SERVICE_URL=http://redirect_service:${REDIRECT_SERVICE_PORT}
+    restart: unless-stopped
+    networks:
+      - url_shortener_net
     depends_on:
       - shortener_service
       - redirect_service
-    networks:
-      - url_shortener_net
 
   shortener_service:
     build: ./shortener-service
+    container_name: shortener_service
     ports:
       - "${SHORTENER_SERVICE_PORT}:${SHORTENER_SERVICE_PORT}"
     environment:
       - PORT=${SHORTENER_SERVICE_PORT}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      - db
+    restart: unless-stopped # <-- PILLAR 1: RELIABILITY
     networks:
       - url_shortener_net
+    depends_on:
+      db:
+        condition: service_healthy
 
   redirect_service:
     build: ./redirect-service
+    container_name: redirect_service
     ports:
       - "${REDIRECT_SERVICE_PORT}:${REDIRECT_SERVICE_PORT}"
     environment:
       - PORT=${REDIRECT_SERVICE_PORT}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://redis:${REDIS_PORT}
+      - REDIS_URL=redis://redis:6379
+    restart: unless-stopped # <-- PILLAR 1: RELIABILITY
+    networks:
+      - url_shortener_net
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  analytics_service:
+    build: ./analytics-service
+    container_name: analytics_service
+    ports:
+      - "${ANALYTICS_SERVICE_PORT}:3003"
+    environment:
+      - PORT=3003
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy # Waits for the DB healthcheck to pass
+      redis:
+        condition: service_started
     networks:
       - url_shortener_net
 
   db:
     image: postgres:15
+    container_name: postgres_db
     restart: always
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -53,9 +83,15 @@ services:
       - db_data:/var/lib/postgresql/data
     networks:
       - url_shortener_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis
+    image: redis:alpine
+    container_name: redis_cache
     restart: always
     ports:
       - "${REDIS_PORT}:6379"

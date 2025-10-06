@@ -1,7 +1,5 @@
 import express from "express";
 import { nanoid } from "nanoid";
-import { eq, and } from "drizzle-orm";
-import db from "./db/index.js";
 import {
   authenticationMiddleware,
   ensureAuthenticated,
@@ -13,8 +11,7 @@ import {
 } from "./validations/req.validation.js";
 import { createNewUser, getUserByEmail } from "./services/user.service.js";
 import { hashedPasswordWithSalt } from "./utils/hash.js";
-import { createNewShortUrl } from "./services/url.service.js";
-import { urlsTable } from "./models/index.js";
+import { createNewShortUrl, deleteShortUrl } from "./services/url.service.js";
 import { createUserToken } from "./utils/token.js";
 
 const app = express();
@@ -22,7 +19,6 @@ app.use(express.json());
 const authRouter = express.Router();
 
 authRouter.post("/signup", async (req, res) => {
-
   const validationResult = await signupRequestBodySchema.safeParseAsync(
     req.body
   );
@@ -104,10 +100,7 @@ urlRouter.get(
   authenticationMiddleware,
   ensureAuthenticated,
   async (req, res) => {
-    const codes = await db
-      .select()
-      .from(urlsTable)
-      .where(eq(urlsTable.userId, req.user.id));
+    const codes = await getAllUserCodes(req.user.id);
     return res.json({ codes });
   }
 );
@@ -117,10 +110,7 @@ urlRouter.delete(
   authenticationMiddleware,
   ensureAuthenticated,
   async (req, res) => {
-    const id = req.params.id;
-    await db
-      .delete(urlsTable)
-      .where(and(eq(urlsTable.id, id), eq(urlsTable.userId, req.user.id)));
+    await deleteShortUrl(req.params.id, req.user.id);
     return res.status(200).json({ deleted: true });
   }
 );

@@ -16,3 +16,18 @@ export async function createNewShortUrl(shortCode, targetUrl, userId) {
     });
   return result;
 }
+
+export async function getAllUserCodes(userId) {
+  const result = await db
+    .select()
+    .from(urlsTable)
+    .where(eq(urlsTable.userId, userId));
+  return result;
+}
+
+export async function deleteShortUrl(id, userId) {
+  const result = db
+    .delete(urlsTable)
+    .where(and(eq(urlsTable.id, id), eq(urlsTable.userId, userId)));
+  return result;
+}

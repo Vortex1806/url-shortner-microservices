@@ -11,7 +11,11 @@ import {
 } from "./validations/req.validation.js";
 import { createNewUser, getUserByEmail } from "./services/user.service.js";
 import { hashedPasswordWithSalt } from "./utils/hash.js";
-import { createNewShortUrl, deleteShortUrl } from "./services/url.service.js";
+import {
+  createNewShortUrl,
+  deleteShortUrl,
+  getAllUserCodes,
+} from "./services/url.service.js";
 import { createUserToken } from "./utils/token.js";
 
 const app = express();

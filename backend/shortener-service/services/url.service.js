@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import db from "../db/index.js";
 import { urlsTable } from "../models/url.model.js";
 

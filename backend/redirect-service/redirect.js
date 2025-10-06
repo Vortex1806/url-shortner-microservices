@@ -1,5 +1,5 @@
 import express from "express";
-import { handleShortUrlRedirect } from "./services/url.service";
+import { handleShortUrlRedirect } from "./services/url.service.js";
 import "./services/redis.service.js"; //ensure redis connects first
 
 const app = express();

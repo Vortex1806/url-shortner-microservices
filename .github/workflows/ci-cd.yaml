@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24-dind
+        options: --privileged
+        ports:
+          - 2375:2375
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # 3. Go to backend folder
+      - name: Enter backend folder
+        working-directory: ./backend
+        run: echo "Now in backend folder"
+
+      # 4. Build Docker Compose images
+      - name: Build Docker Compose images
+        working-directory: ./backend
+        run: docker-compose build
+
+      # 5. Run unit tests for each service
+      - name: Run unit tests
+        working-directory: ./backend
+        run: |
+          docker-compose run --rm shortener_service npm test
+
+      # 6. Start all services for integration tests
+      - name: Start all services
+        working-directory: ./backend
+        run: docker-compose up -d
+
+      # 8. Stop all services after tests
+      - name: Stop all services
+        working-directory: ./backend
+        run: docker-compose down

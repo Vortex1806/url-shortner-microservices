@@ -3,14 +3,14 @@ import { nanoid } from "nanoid";
 import {
   authenticationMiddleware,
   ensureAuthenticated,
-} from "./middlewares/auth.middleware.js";
-import { shortenCodeBodySchema } from "./validations/req.validation.js";
+} from "../middlewares/auth.middleware.js";
+import { shortenCodeBodySchema } from "../validations/req.validation.js";
 
 import {
   createNewShortUrl,
   deleteShortUrl,
   getAllUserCodes,
-} from "./services/url.service.js";
+} from "../services/url.service.js";
 
 const urlRouter = express.Router();
 

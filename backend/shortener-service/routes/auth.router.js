@@ -1,12 +1,12 @@
 import express from "express";
 
-import { createNewUser, getUserByEmail } from "./services/user.service.js";
-import { hashedPasswordWithSalt } from "./utils/hash.js";
+import { createNewUser, getUserByEmail } from "../services/user.service.js";
+import { hashedPasswordWithSalt } from "../utils/hash.js";
 import {
   signupRequestBodySchema,
   loginRequestBodySchema,
-} from "./validations/req.validation.js";
-import { createUserToken } from "./utils/token.js";
+} from "../validations/req.validation.js";
+import { createUserToken } from "../utils/token.js";
 
 const authRouter = express.Router();
 

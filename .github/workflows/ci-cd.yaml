@@ -9,46 +9,57 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:24-dind
-        options: --privileged
-        ports:
-          - 2375:2375
+
+    env:
+      # ✅ Inject environment variables from GitHub Secrets
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+      REDIS_PORT: ${{ secrets.REDIS_PORT }}
+      API_GATEWAY_PORT: ${{ secrets.API_GATEWAY_PORT }}
+      SHORTENER_SERVICE_PORT: ${{ secrets.SHORTENER_SERVICE_PORT }}
+      REDIRECT_SERVICE_PORT: ${{ secrets.REDIRECT_SERVICE_PORT }}
+      ANALYTICS_SERVICE_PORT: ${{ secrets.ANALYTICS_SERVICE_PORT }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     steps:
-      # 1. Checkout code
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+      # 2️⃣ Set up Docker Compose
+      - name: Set up Docker Compose
+        uses: docker/setup-buildx-action@v3
 
-      # 3. Go to backend folder
-      - name: Enter backend folder
-        working-directory: ./backend
-        run: echo "Now in backend folder"
+      # 3️⃣ Login to Docker (optional if using private images)
+      # - name: Log in to DockerHub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 4. Build Docker Compose images
-      - name: Build Docker Compose images
+      # 4️⃣ Build Docker Compose images
+      - name: Build Docker images
         working-directory: ./backend
         run: docker compose build
 
-      # 5. Run unit tests for each service
+      # 5️⃣ Run unit tests for shortener_service
       - name: Run unit tests
         working-directory: ./backend
-        run: |
-          docker compose run --rm shortener_service npm test
+        run: docker compose run --rm shortener_service npm test
 
-      # 6. Start all services for integration tests
+      # 6️⃣ Start all services for integration tests
       - name: Start all services
         working-directory: ./backend
         run: docker compose up -d
 
-      # 8. Stop all services after tests
+      # 7️⃣ (Optional) Run integration tests
+      # - name: Run integration tests
+      #   working-directory: ./backend
+      #   run: npm run test:integration
+
+      # 8️⃣ Stop and clean up
       - name: Stop all services
         working-directory: ./backend
-        run: docker-compose down
+        run: docker compose down

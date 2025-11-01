@@ -1,4 +1,4 @@
-# **Lyncut \- A High-Performance URL Shortener Microservice 🚀**
+# **Lyncut \- A High-Performance URL Shortener Microservice**
 
 Lyncut is a robust and scalable URL shortening service built with a microservices architecture. It provides a simple way to create, manage, and track short links, designed for high availability and performance.
 
